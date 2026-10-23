@@ -18,6 +18,8 @@ RavenDB is a transactional (ACID) document database: JSON documents in collectio
 1. **Read `references/rql-cheatsheet.md`.** Every query, every time, including ones that look obvious. RQL resembles SQL closely enough that a query written from memory usually parses and then returns the wrong rows.
 2. **If the query names a static index, read that index off the server first:** `GET /databases/<db>/indexes?name=<index>`. `?name=` is a query string, so `/indexes/<index>` is not a route and returns `RouteNotFoundException`. The definition names the fields the index holds and which are analyzed, which decides whether `=` or `search()` matches. An index cannot answer on a field it does not hold.
 
+With the RavenDB MCP server connected, do these reads with its tools instead of raw HTTP: `get_index` for the definition, `run_query` for the query.
+
 Then route from the tables below to the one further file your task needs and follow its syntax exactly. Read only what the tables route you to; unrouted files waste context. Use ravendb.net/docs only if no file covers it.
 
 **Find out what the database is before you write to it.** `GET /databases` reports an `Environment` per database:
@@ -90,17 +92,20 @@ Writing a query is different: it always starts at the cheatsheet below, whicheve
 ## Writing a query
 
 **Always start at `references/rql-cheatsheet.md`:** clause order, `where`/`select`/`group by`/paging, and the SQL
-habits that silently return wrong rows. Open one of these after it, only if your query needs it:
+habits that silently return wrong rows. Then find your keyword below and open that file too, only if your query needs
+it. A keyword says the feature exists, not how to write it: take the syntax from the file.
 
-| Your query needs… | Read |
-|---|---|
-| How querying works: dynamic vs named index, auto-indexes, staleness, parameters | `references/rql-reference.md` |
-| The exact signature of one method (`id` `exists` `regex` `startsWith` …) | `references/rql-functions.md` |
-| Full-text: `search` `boost` `fuzzy` `proximity` | `references/rql-fulltext.md` |
-| Facets, `avg`/`min`/`max` over a collection | `references/rql-facets.md` |
-| `suggest` `morelikethis` `highlight` `vector.search` (7.0+) | `references/rql-advanced.md` |
-| Spatial: `spatial.within` `circle` `wkt` distance | `references/rql-spatial.md` |
-| Time series query syntax | `references/rql-timeseries.md` |
+| Your query needs… | Keywords | Read |
+|---|---|---|
+| Clause order, filtering, sorting, projections, `group by`, includes, paging | `from` `where` `filter` `in` `all in` `between` `not` `order by` `asc` `desc` `score()` `random()` `custom()` `select` `distinct` `declare` `load` `group by` `count()` `sum()` `key()` `array()` `include` `counters` `timeseries` `revisions` `limit` `offset` | `references/rql-cheatsheet.md` (start here) |
+| How querying works: dynamic vs named index, auto-indexes, staleness, parameters | | `references/rql-reference.md` |
+| The exact signature of one method | `id` `exists` `regex` `startsWith` `endsWith` `intersect` `cmpxchg` `lucene` | `references/rql-functions.md` |
+| Full-text | `search` `boost` `fuzzy` `proximity` `exact` wildcards | `references/rql-fulltext.md` |
+| Facets, `avg`/`min`/`max` over a collection | `facet()` | `references/rql-facets.md` |
+| Suggestions, similar documents, highlighting, vector search | `suggest` `morelikethis` `highlight` `vector.search` (7.0+) | `references/rql-advanced.md` |
+| Spatial | `spatial.within` `circle` `wkt` `spatial.distance` | `references/rql-spatial.md` |
+| Time series | `select timeseries` `declare timeseries` `group by` buckets | `references/rql-timeseries.md` |
+| Official docs for your server version, when no file above covers it | | `references/rql-docs.md` |
 
 **Aggregation routes three ways, so pick one before reading.** Ad-hoc aggregate: `group by`, in `rql-cheatsheet.md`.
 Faceted breakdown of a filtered result set: `rql-facets.md`. Precomputed or large: map-reduce, in your language's

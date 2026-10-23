@@ -29,7 +29,8 @@ references/
   diagnostics.md            wrong results, broken index, slow server, exceptions, logs
   samples.md                official sample apps and what each one showcases
   rql-*.md                  cheatsheet, reference, functions, fulltext, facets,
-                            advanced (suggest/MLT/vector), spatial, timeseries
+                            advanced (suggest/MLT/vector), spatial, timeseries,
+                            docs (official links per server version)
   nodejs/ dotnet/ python/   client.md · indexes.md · operations.md · testing.md ·
                             ai-agents.md
 ```
