@@ -1,6 +1,16 @@
 # RQL cheat-sheet
 
-Dense syntax reference. Method surface: `rql-functions.md`. Concepts: `rql-reference.md`. Version-correct details: ravendb.net/docs.
+Dense syntax reference. Method surface: `rql-functions.md`. Concepts: `rql-reference.md`. Version-correct details: `rql-docs.md`.
+
+## Before you filter, look at one document
+
+Run `from <Collection> limit 1` first and filter only on field names you saw in it. Field names are case-sensitive, and a misspelled one in `where` is not an error on a collection: the query returns no rows and leaves an auto-index on the wrong name behind (`where company = …` against `Company` creates `Auto/Orders/Bycompany`). `from <Collection> limit 1` itself is served from the collection and creates no index.
+
+| You reach RavenDB through | Run it with |
+|---|---|
+| Raw HTTP | `POST /databases/<db>/queries` with `{ "Query": "from Orders limit 1" }` (`http-api.md`) |
+| A client library | its raw-query call, `RawQuery` (.NET), `rawQuery` (Node.js) or `raw_query` (Python), in your language's `client.md` |
+| The RavenDB MCP server | its `run_query` tool |
 
 ## Clause order
 ```
@@ -138,4 +148,4 @@ Two more that return wrong rows rather than failing: quoting a number makes the 
 - Numeric/date `order by` needs a cast (`as double`/`as long`), else lexical order.
 
 ## Next
-Concepts (dynamic vs index, staleness): `rql-reference.md`. Exact signatures for every method: `rql-functions.md`. One file per area — full-text, spatial, time series, facets, suggestions/MLT/vector — routed from `SKILL.md`. Official docs at ravendb.net/docs are the last resort.
+Concepts (dynamic vs index, staleness): `rql-reference.md`. Exact signatures for every method: `rql-functions.md`. One file per area (full-text, spatial, time series, facets, suggestions/MLT/vector), routed from `SKILL.md`. Official docs for your server version are the last resort: `rql-docs.md`.

@@ -1,6 +1,6 @@
 # RQL reference — concepts
 
-How querying works across supported versions. Syntax: `rql-cheatsheet.md`; every method: `rql-functions.md`; version-correct details: ravendb.net/docs.
+How querying works across supported versions. Syntax: `rql-cheatsheet.md`; every method: `rql-functions.md`; version-correct details: `rql-docs.md`.
 
 ## Query anatomy
 Full clause order:
