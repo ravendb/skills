@@ -1,0 +1,62 @@
+name: Skills
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    name: Skill discovery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: The skills CLI lists every skill under its directory name
+        env:
+          DISABLE_TELEMETRY: "1"
+        run: |
+          set -euo pipefail
+          out=$(npx -y skills@1.7.4 add . --list 2>&1 | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g')
+          echo "$out"
+          status=0
+          for skill_md in skills/*/SKILL.md; do
+            dir=$(basename "$(dirname "$skill_md")")
+            name=$(sed -n 's/^name:[[:space:]]*//p' "$skill_md" | head -n1 | tr -d "\"'\r")
+            if [ "$name" != "$dir" ]; then
+              echo "::error file=$skill_md::name '$name' does not match its directory '$dir'"
+              status=1
+            elif ! grep -qxE "[│ ]*${name}[[:space:]]*" <<<"$out"; then
+              echo "::error file=$skill_md::the skills CLI does not list '$name'"
+              status=1
+            fi
+          done
+          exit $status
+
+  links:
+    name: Routing links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 .github/scripts/check-skill-links.py
+
+  scan:
+    name: Skill security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes no floating major tag, so pin the release.
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      # Cisco skill-scanner with its static and behavioral analyzers only: runs offline,
+      # needs no account or API key. Catches the blatant cases (injected instructions,
+      # pipe-to-shell, exfiltration); the LLM judge that finds subtler ones is left off.
+      - name: Scan skills (fail on HIGH and CRITICAL)
+        run: >-
+          uvx --from cisco-ai-skill-scanner==2.3.1 skill-scanner
+          scan-all skills --recursive --use-behavioral --fail-on-severity high
