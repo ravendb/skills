@@ -1,0 +1,11 @@
+{
+  "name": "@ravendb/skills",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RavenDB agent skills. Not published to the npm registry: install from GitHub pinned to a commit, e.g. github:ravendb/skills#<commit>.",
+  "license": "MIT",
+  "repository": "github:ravendb/skills",
+  "files": [
+    "skills"
+  ]
+}
