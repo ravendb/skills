@@ -128,6 +128,8 @@ Files inside `references/` cross-link to each other with relative paths. Follow 
 
 Not covered here, so go to ravendb.net/docs or ask the user: sharding, backup/restore, ETL and external replication, production monitoring and SNMP, encryption at rest, cluster topology changes.
 
+Docs pages are also served as Markdown: send `Accept: text/markdown`, or add `.md` to a page URL on docs.ravendb.net. A page with code for several client languages lists its per-language files at the top (`.python.md`, `.nodejs.md` and so on); read the one for your language.
+
 ## Version & license gate
 
 Baseline server is **6.2+**; older versions are out of support, so ignore them. Features above the baseline carry an
