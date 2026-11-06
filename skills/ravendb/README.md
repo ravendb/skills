@@ -24,7 +24,7 @@ references/
   structure.md              store singleton, startup order, session per unit of work
   modeling.md               collections, ids, embed vs reference, metadata
   http-api.md               docs / queries / bulk_docs over raw HTTP
-  ai-agents.md              agent configs + conversation endpoints (7.1+)
+  ai-agents.md              agent configs + conversation endpoints
   testing.md                route choice, staleness flakes, what to test, CI
   diagnostics.md            wrong results, broken index, slow server, exceptions, logs
   samples.md                official sample apps and what each one showcases

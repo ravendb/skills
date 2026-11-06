@@ -1,4 +1,4 @@
-# RavenDB AI Agents (7.1+)
+# RavenDB AI Agents
 
 How to define an AI agent in RavenDB and run conversations with it — concepts and HTTP surface; client-library wrappers live in your language's directory (`nodejs/ai-agents.md`, `dotnet/ai-agents.md`, `python/ai-agents.md`).
 
