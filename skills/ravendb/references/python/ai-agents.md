@@ -71,7 +71,7 @@ answer = chat.run()      # loops tool calls until status DONE
 - Streaming: `chat.stream("recommendation", on_chunk=lambda s: ...)`.
 - Attachments: `chat.add_attachment(name, bytes_or_stream)`, `chat.copy_attachment_from(doc_id, file_name)`.
 - Continue an existing conversation: `store.ai.conversation(agent_id, conversation_id)`; history via `store.ai.get_conversation_messages(conversation_id)`.
-- Requires RavenDB 7.1+ server and a license with the AI-agents feature; a missing agent parameter raises `MissingAiAgentParameterException`.
+- Requires a license with the AI-agents feature; a missing agent parameter raises `MissingAiAgentParameterException`.
 
 ## Vector search
 
