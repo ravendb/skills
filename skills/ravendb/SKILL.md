@@ -4,7 +4,7 @@ description: Read this before writing any RavenDB query, client call or /databas
 license: MIT
 metadata:
   author: ravendb
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # RavenDB
