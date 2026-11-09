@@ -4,7 +4,7 @@ description: Read this before writing any RavenDB query, client call or /databas
 license: MIT
 metadata:
   author: ravendb
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # RavenDB
@@ -117,7 +117,7 @@ Faceted breakdown of a filtered result set: `rql-facets.md`. Precomputed or larg
 |---|---|
 | Wiring a codebase: store singleton, deploy indexes at startup, session per unit of work, where query code lives | `references/structure.md` |
 | Document shape: collections, ids, embed vs reference, `@metadata`, change vector | `references/modeling.md` |
-| AI agents (7.1+, license): concepts and the conversation HTTP surface | `references/ai-agents.md`, then your language's `ai-agents.md` |
+| AI agents (license): concepts and the conversation HTTP surface | `references/ai-agents.md`, then your language's `ai-agents.md` |
 | Raw HTTP: `GET /docs`, `POST /queries`, `POST /bulk_docs`, index definitions, create database | `references/http-api.md` |
 | Can this deployment run a marked feature: server version, client package version, license | `references/version-gate.md` |
 | Testing: which route, staleness flakes, what to test, CI. Read before your language's `testing.md` | `references/testing.md` |
