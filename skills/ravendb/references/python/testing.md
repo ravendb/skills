@@ -1,8 +1,8 @@
-# Testing RavenDB code — Python
+# Testing RavenDB code: Python
 
 Routes and the language-neutral discipline (staleness, what to test, CI): `../testing.md`.
 
-## Route 1 — test driver
+## Route 1: test driver
 
 ```python
 # pip install ravendb-test-driver
@@ -23,15 +23,35 @@ class TestDeals(TestCase):
             RavenTestDriver.wait_for_indexing(store)
 ```
 
-- Database per call to `get_document_store()` — no cross-test leakage, no cleanup code.
+- Database per call to `get_document_store()`: no cross-test leakage, no cleanup code.
 - Override `setup_database` to seed or configure revisions once per database.
 - `wait_for_indexing(store)` before any assertion that queries. It and `configure_server` are `@staticmethod`s on `RavenTestDriver`; calling them on the instance works but implies per-instance state that does not exist.
 - `configure_server(options)` must be called before the first `get_document_store()`; after that the server is up and it throws.
 - The driver pulls a server via `ravendb-embedded` and starts it as a real process, not an in-memory fake.
 
+### Waiting for indexing without the driver
+
+Route 2 hand-rolled, Route 3, or a seed script has no `wait_for_indexing`. Poll the database statistics after a bulk seed or an index deploy:
+
+```python
+import time
+from ravendb import GetStatisticsOperation
+from ravendb.documents.indexes.definitions import IndexState
+
+def wait_for_indexing(store):
+    while True:
+        stats = store.maintenance.send(GetStatisticsOperation())
+        indexes = [i for i in stats.indexes if i.state != IndexState.DISABLED]
+        if all(not i.stale for i in indexes):
+            return
+        time.sleep(0.1)
+```
+
+Skip disabled indexes or the wait never returns. `i.state` is an `IndexState` enum, so compare it to `IndexState.DISABLED`, not to a string: an enum never equals a string, and the filter would keep every index.
+
 ### The bundled server pins an exact runtime patch, and a lower one on the machine will not do
 
-The embedded package's `RavenDBServer/Raven.Server.runtimeconfig.json` names the `Microsoft.NETCore.App` *and* `Microsoft.AspNetCore.App` version it requires; framework roll-forward only moves up, so a machine one patch behind fails at first use with `Could not find a matching runtime for '<version>+'`. Read the required version out of that file, install a matching ASP.NET Core runtime — `dotnet-install.sh --runtime aspnetcore --version <v> --install-dir <dir>` needs no root — and point the driver at it:
+The embedded package's `RavenDBServer/Raven.Server.runtimeconfig.json` names the `Microsoft.NETCore.App` *and* `Microsoft.AspNetCore.App` version it requires; framework roll-forward only moves up, so a machine one patch behind fails at first use with `Could not find a matching runtime for '<version>+'`. Read the required version out of that file, install a matching ASP.NET Core runtime (`dotnet-install.sh --runtime aspnetcore --version <v> --install-dir <dir>` needs no root) and point the driver at it:
 
 ```python
 from ravendb_embedded import ServerOptions
@@ -42,9 +62,9 @@ options.dot_net_path = "<dir>/dotnet"
 RavenTestDriver.configure_server(options)
 ```
 
-`framework_version` on the same options object becomes `--fx-version`, which covers only `Microsoft.NETCore.App` — it cannot satisfy the ASP.NET Core half, so it is not the fix for a too-old runtime.
+`framework_version` on the same options object becomes `--fx-version`, which covers only `Microsoft.NETCore.App`: it cannot satisfy the ASP.NET Core half, so it is not the fix for a too-old runtime.
 
-When no matching runtime can be installed at all, the driver still gives database-per-test against a server you already run — no embedded boot, nothing needing .NET:
+When no matching runtime can be installed at all, the driver still gives database-per-test against a server you already run, with no embedded boot and nothing needing .NET:
 
 ```python
 RavenTestDriver.configure_external_server(url, certificate_pem_path=None, trust_store_path=None)
@@ -52,13 +72,13 @@ RavenTestDriver.configure_external_server(url, certificate_pem_path=None, trust_
 
 Equivalent env vars are `RAVENDB_TEST_SERVER_URL` / `_CERT` / `_CA`. Call it before the first `get_document_store()`.
 
-## Route 2 — one server, database per test
+## Route 2: one server, database per test
 
-`configure_external_server` (above) is the easiest form of this route: the driver still names and hard-deletes a database per test, it just skips the embedded boot. Hand-rolled instead — `CreateDatabaseOperation` / `DeleteDatabaseOperation` from `operations.md`, one uniquely named database per test, hard-deleted on teardown — when the suite must control the names or the database record.
+`configure_external_server` (above) is the easiest form of this route: the driver still names and hard-deletes a database per test, it just skips the embedded boot. Hand-roll it instead (`CreateDatabaseOperation` / `DeleteDatabaseOperation` from `operations.md`, one uniquely named database per test, hard-deleted on teardown) when the suite must control the names or the database record.
 
 Either way the store you get is already initialized, so store-level conventions cannot be changed on it; anything that must be set before `initialize()` belongs to a store you construct yourself.
 
-## Route 3 — embedded server, driven directly
+## Route 3: embedded server, driven directly
 
 When the test needs to own server configuration or survive across many tests:
 
@@ -77,8 +97,8 @@ except RuntimeError:
     pass                            # 7.2.5.post1: the server process is already down by now
 ```
 
-Same trade-off as Route 1 — real server process, matching runtime required — but you control lifetime and settings. `open_studio_in_browser()` for a look inside.
+Same trade-off as Route 1 (real server process, matching runtime required), but you control lifetime and settings. `open_studio_in_browser()` for a look inside.
 
 - `get_document_store(name)` **creates the database** unless you pass `DatabaseOptions` with `skip_creating_database = True` via `get_document_store_from_options`, so a following `CreateDatabaseOperation` is redundant.
-- `close()` in `ravendb-embedded` 7.2.5.post1 kills the server process first and then raises `RuntimeError: dictionary changed size during iteration` while closing the stores it tracks — the shutdown succeeded, the bookkeeping did not. Catch it rather than reading it as a failed teardown.
+- `close()` in `ravendb-embedded` 7.2.5.post1 kills the server process first and then raises `RuntimeError: dictionary changed size during iteration` while closing the stores it tracks: the shutdown succeeded, the bookkeeping did not. Catch it rather than reading it as a failed teardown.
 - There is no public accessor for the server's pid; asserting the process is gone means checking the port or the process table.

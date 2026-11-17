@@ -11,7 +11,12 @@ metadata:
 
 RavenDB is a transactional (ACID) document database: JSON documents in collections, queries in RQL served by indexes that are always maintained, with a client library per language.
 
-**Your recall of RavenDB is stale. Do not write RQL, client code, or endpoint shapes from memory.**
+**Your recall of RavenDB is stale. Do not write RQL, client code, or endpoint shapes from memory:** take them from
+these files, or from the docs page for your server version.
+
+**A gap here is not a missing feature.** These files hold the traps and the routing, not the full API. If they do not
+mention something, that is not evidence it does not exist: read the docs page for your server version ("Official docs"
+below) before telling the user RavenDB lacks it.
 
 **Before you write any query, do both of these:**
 
@@ -20,7 +25,7 @@ RavenDB is a transactional (ACID) document database: JSON documents in collectio
 
 With the RavenDB MCP server connected, do these reads with its tools instead of raw HTTP: `get_index` for the definition, `run_query` for the query.
 
-Then route from the tables below to the one further file your task needs and follow its syntax exactly. Read only what the tables route you to; unrouted files waste context. Use ravendb.net/docs only if no file covers it.
+Then route from the tables below to the one further file your task needs. Read only what the tables route you to; unrouted files waste context. Each file holds the traps for its area and routes the rest to a docs page: for API details, read that page for your server version, as "Official docs" below describes.
 
 **Find out what the database is before you write to it.** `GET /databases` reports an `Environment` per database:
 `Production`, `Testing`, `Development` or `None`. A server-wide default can be set separately, readable at
@@ -76,16 +81,26 @@ something, change a setting or call a URL, show it to the user instead.
 | JavaScript / Node.js (`ravendb` npm) | `references/nodejs/` |
 | C# / .NET (`RavenDB.Client` NuGet) | `references/dotnet/` |
 | Python (`ravendb` pip) | `references/python/` |
+| Java (`net.ravendb:ravendb`) or PHP (`ravendb/ravendb-php-client`) | no files here: the docs, as below |
 
 Every directory holds the same five files:
 
 | File | When your change involves… |
 |---|---|
-| `client.md` | store setup, sessions, CRUD, basic querying, includes, bulk insert |
-| `indexes.md` | static indexes, map-reduce, `LoadDocument`, full-text, vector search, waiting out staleness |
-| `operations.md` | creating/deleting a database in code, subscriptions, patching, attachments/counters/time-series/revisions, optimistic concurrency and cluster-wide transactions, facet/suggest/spatial query calls |
+| `client.md` | the minimal start, verbatim: store, session, load, store, query. Also a secured server, and the client's traps |
+| `indexes.md` | the traps of static indexes, map-reduce, vector fields and staleness |
+| `operations.md` | which operations are writes, and the traps of database management, subscriptions, patching, attachments/counters/time-series/revisions, concurrency and facet calls |
 | `testing.md` | test driver or database-per-test suite in that language, and the runtime it needs. Read `references/testing.md` first to pick the route |
 | `ai-agents.md` | the client's AI-agent wrapper |
+
+Every other client call is in the docs: `references/client-docs.md` maps each topic to its docs page.
+
+**Java and PHP** have no files here; work from the docs. For Java,
+`https://docs.ravendb.net/<version>/start/getting-started` shows the store, a session, store, load and a query in
+Java on every maintained version; for the rest, `references/client-docs.md` and the
+`.java.md` copies. For PHP, take `new DocumentStore($urls, $database)`
+and `$store->initialize()` from the client's README (`https://github.com/ravendb/ravendb-php-client`), then
+`references/client-docs.md` and the `.php.md` copies. The query traps and routes below apply to every language.
 
 Writing a query is different: it always starts at the cheatsheet below, whichever language you are in.
 
@@ -93,23 +108,21 @@ Writing a query is different: it always starts at the cheatsheet below, whicheve
 
 **Always start at `references/rql-cheatsheet.md`:** clause order, `where`/`select`/`group by`/paging, and the SQL
 habits that silently return wrong rows. Then find your keyword below and open that file too, only if your query needs
-it. A keyword says the feature exists, not how to write it: take the syntax from the file.
+it. A keyword says the feature exists, not how to write it: take the syntax from the file, or from the docs page it
+routes to.
 
 | Your query needs… | Keywords | Read |
 |---|---|---|
 | Clause order, filtering, sorting, projections, `group by`, includes, paging | `from` `where` `filter` `in` `all in` `between` `not` `order by` `asc` `desc` `score()` `random()` `custom()` `select` `distinct` `declare` `load` `group by` `count()` `sum()` `key()` `array()` `include` `counters` `timeseries` `revisions` `limit` `offset` | `references/rql-cheatsheet.md` (start here) |
-| How querying works: dynamic vs named index, auto-indexes, staleness, parameters | | `references/rql-reference.md` |
-| The exact signature of one method | `id` `exists` `regex` `startsWith` `endsWith` `intersect` `cmpxchg` `lucene` | `references/rql-functions.md` |
-| Full-text | `search` `boost` `fuzzy` `proximity` `exact` wildcards | `references/rql-fulltext.md` |
-| Facets, `avg`/`min`/`max` over a collection | `facet()` | `references/rql-facets.md` |
-| Suggestions, similar documents, highlighting, vector search | `suggest` `morelikethis` `highlight` `vector.search` (7.0+) | `references/rql-advanced.md` |
-| Spatial | `spatial.within` `circle` `wkt` `spatial.distance` | `references/rql-spatial.md` |
-| Time series | `select timeseries` `declare timeseries` `group by` buckets | `references/rql-timeseries.md` |
-| Official docs for your server version, when no file above covers it | | `references/rql-docs.md` |
+| Dates relative to the current time, which depend on the server version | `now()` `today()` | the date page in `references/rql-docs.md` |
+| Full-text: the traps | `search` `boost` `fuzzy` `proximity` `exact` wildcards | `references/rql-fulltext.md` |
+| Time series: the traps | `select timeseries` `declare timeseries` `group by` buckets | `references/rql-timeseries.md` |
+| The syntax of any of these, and of everything else: methods, facets, suggestions, more like this, highlighting, spatial, vector search, how dynamic and index queries work | `id` `exists` `regex` `startsWith` `endsWith` `intersect` `cmpxchg` `lucene` `facet()` `suggest` `morelikethis` `highlight` `spatial.within` `wkt` `vector.search` (7.0+) | `references/rql-docs.md`, the docs page for your server version |
 
 **Aggregation routes three ways, so pick one before reading.** Ad-hoc aggregate: `group by`, in `rql-cheatsheet.md`.
-Faceted breakdown of a filtered result set: `rql-facets.md`. Precomputed or large: map-reduce, in your language's
-`indexes.md`. `group by` is rejected on a named index; use a collection, or an index that is already map-reduce.
+Faceted breakdown of a filtered result set: the facets page in `rql-docs.md`. Precomputed or large: map-reduce, in
+your language's `indexes.md`. `group by` is rejected on a named index; use a collection, or an index that is already
+map-reduce.
 
 ## Everything else
 
@@ -126,13 +139,26 @@ Faceted breakdown of a filtered result set: `rql-facets.md`. Precomputed or larg
 
 Files inside `references/` cross-link to each other with relative paths. Follow those links; they are part of the routing.
 
-Not covered here, so go to ravendb.net/docs or ask the user: sharding, backup/restore, ETL and external replication, production monitoring and SNMP, encryption at rest, cluster topology changes.
+Not covered here, so read docs.ravendb.net as "Official docs" below describes, or ask the user: sharding, backup/restore, ETL and external replication, production monitoring and SNMP, encryption at rest, cluster topology changes.
 
-Docs pages are also served as Markdown: send `Accept: text/markdown`, or add `.md` to a page URL on docs.ravendb.net. A page with code for several client languages lists its per-language files at the top (`.python.md`, `.nodejs.md` and so on); read the one for your language.
+## Official docs
+
+Read docs at `https://docs.ravendb.net/<version>/<path>`, with `<version>` your server's major.minor (`ProductVersion`
+from `GET /build/version`). `references/rql-docs.md` (RQL) and `references/client-docs.md` (client calls) list the
+pages by topic. Docs for another version describe syntax this server may not have. If
+`https://docs.ravendb.net/<version>.md` returns 404, that version's docs are no longer maintained: tell the user, and
+read the next version up that answers.
+
+- Add `.md` to the page URL, or send `Accept: text/markdown`, to get the page as Markdown. Its code, if any, is C#.
+- For another client language read `<path>.<lang>.md`, with `<lang>` one of `nodejs`, `python`, `java`, `php`. The
+  header of `<path>.md` lists the ones that exist. If yours is missing, the RQL on the page still holds; take the
+  client calls from your language's files here. `?lang=` in a URL does not change the Markdown.
+- Do not follow an old `ravendb.net/docs/article-page/<version>/<language>/<path>` link, from memory or from search: it
+  redirects to the version it names and drops the language. Rewrite it to
+  `https://docs.ravendb.net/<version>/<path>.<lang>.md` (`<path>.md` for C#) with your server's version.
 
 ## Version & license gate
 
-Baseline server is **6.2+**; older versions are out of support, so ignore them. Features above the baseline carry an
-inline mark where they are documented: `(7.0+)` or `(7.1+)` is a **server** requirement, `(client 7.2.2+)` names a
-**client package** version, and `(license)` means the license decides. Before writing code against a marked feature,
-run the matching check in `references/version-gate.md`.
+Features that need a newer server, client or license carry an inline mark where they are documented: `(7.0+)` or
+`(7.1+)` is a **server** requirement, `(client 7.2.2+)` names a **client package** version, and `(license)` means the
+license decides. Before writing code against a marked feature, run the matching check in `references/version-gate.md`.

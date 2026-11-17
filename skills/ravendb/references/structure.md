@@ -1,6 +1,6 @@
 # Structuring a RavenDB codebase
 
-How the pieces wire together, regardless of language. Syntax for each call lives in your language's `client.md` / `indexes.md` — this file is only the shape.
+How the pieces wire together, regardless of language. The minimal start is in your language's `client.md`, the traps in its `indexes.md` and `operations.md`, and the syntax of every other call in the docs via `client-docs.md`: this file is only the shape.
 
 ## One store, created once
 
@@ -16,7 +16,7 @@ One startup path takes a bare server to a ready app, idempotently:
 
 1. Create + `initialize()` the store.
 2. Ensure the database exists (`CreateDatabase`, swallow "already exists").
-3. **Deploy every static index** — the client's bulk helper (`IndexCreation.CreateIndexes` / `createIndexes` / `create_indexes`) or each task's own execute call; exact form in your language's `indexes.md`. Idempotent: an unchanged definition is a no-op, a changed one rebuilds side-by-side. This is the only correct place to register indexes; do not deploy them lazily from a query path.
+3. **Deploy every static index**: the client's bulk helper (`IndexCreation.CreateIndexes` / `createIndexes` / `create_indexes`) or each task's own execute call; the call names are in your language's `indexes.md`, the exact form on the deploying pages in `client-docs.md`. Idempotent: an unchanged definition is a no-op, a changed one rebuilds side-by-side. This is the only correct place to register indexes; do not deploy them lazily from a query path.
 4. Enable any server-side features the app relies on (Refresh, ETL, expiration, AI connection strings/agents).
 5. Seed idempotently — check for existing data and skip. Bulk insert assigns a fresh auto-id per call and never upserts, so a second run silently doubles the collection rather than overwriting it. Use explicit ids when a re-run must be a no-op.
 6. Wait once for indexes to be non-stale (poll `GetStatisticsOperation`) **after** deploy and seed — never before. A wait placed ahead of the deploy returns immediately (the index doesn't exist yet) and the first queries hit a stale index.

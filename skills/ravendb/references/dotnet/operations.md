@@ -1,151 +1,87 @@
-# RavenDB .NET client — operations beyond CRUD/query
+# RavenDB .NET client: operations and their traps
 
-Verified against `Raven.Client` v7.2 source. Covers database management, data subscriptions, patching, attachments/counters/time series/revisions, cluster-wide transactions & compare-exchange, and advanced-query call forms.
+This file holds the safety rule and the traps for work beyond CRUD: databases, subscriptions, patching, attachments,
+counters, time series, revisions, cluster-wide transactions and concurrency, and facet calls. Every API here is in the
+docs: find the page in `../client-docs.md` and read its C# copy (`<path>.md`) for the server's version. An operation
+this file does not show still exists: check the docs page for your server version before saying it does not.
 
-## Database management from client
+**Most of these are writes.** Creating or deleting a database, creating or deleting a subscription, patching one
+document or by query, a revisions configuration, and putting or deleting a compare-exchange value all change state that
+outlives your task. Under the production rule in `SKILL.md`, name the operation and the database it lands on and get the
+user's agreement first. Deleting a database with `hardDelete` removes its files for good.
 
-```csharp
-using Raven.Client.ServerWide;
-using Raven.Client.ServerWide.Operations;
-using Raven.Client.Exceptions.Database;
+## Traps
 
-store.Maintenance.Server.Send(new CreateDatabaseOperation(new DatabaseRecord("Reports")));
+### Dispatch
 
-store.Maintenance.Server.Send(new DeleteDatabasesOperation("Reports", hardDelete: true));
-```
+- Server-level operations (create, delete or list databases) go through `store.Maintenance.Server.Send(...)`.
+  `store.Maintenance.Send(...)` runs database-level operations against `store.Database`, and `store.Operations.Send(...)`
+  runs data operations such as patches.
 
-- `Maintenance.Server.Send(...)` runs server-level ops; `Maintenance.Send(...)` runs db-level ops (against `store.Database`).
-- `CreateDatabaseOperation(DatabaseRecord)` or `CreateDatabaseOperation(DatabaseRecord, int replicationFactor)`. `DatabaseRecord(string name)` sets the name; leave defaults for a single-node local db.
-- `DeleteDatabasesOperation(string databaseName, bool hardDelete, string fromNode = null, TimeSpan? timeToWaitForConfirmation = null)`, or pass a `DeleteDatabasesOperation.Parameters { DatabaseNames = [...], HardDelete = true }` for many.
-- `GetDatabaseNamesOperation(start, pageSize)` returns `string[]` of every database on the server — the way to find leftovers to clean up, or to check existence without pulling a whole record.
-- Ensure-exists / self-provision from app code — check the record, create if absent, swallow the create race:
+### Subscriptions
 
-```csharp
-var record = store.Maintenance.Server.Send(new GetDatabaseRecordOperation(store.Database));
-if (record == null)
-{
-    try { store.Maintenance.Server.Send(new CreateDatabaseOperation(new DatabaseRecord(store.Database))); }
-    catch (Exception) { /* concurrent create; record now exists */ }
-}
-```
+- **A named subscription is create-once, not upsert.** `Create` with a `Name` that already exists is rejected ("already
+  in use in a subscription with different Id"), and the error does not say to look first. Startup code that reruns must
+  check `GetSubscriptions` and create only when missing. An unnamed `Create` lets the server generate the name, at the
+  cost of not finding it again.
+- The worker connects over the server's **TCP** port, not HTTP: the client reads `GET /info/tcp` and dials the address
+  the server advertises there. A server whose TCP port is published on a different host port than it binds (a Docker
+  remap) sends the worker to the wrong place, and the error names a missing database rather than a wrong port.
+  `../install.md` has the fix.
+- Delivery is at least once: a crash before the batch is acknowledged replays it on the next worker. Make the
+  processing idempotent.
+- `worker.Run(...)` returns a `Task` that completes only on a terminal error (`SubscriptionClosedException`,
+  `SubscriptionInvalidStateException`, `SubscriptionDoesNotExistException`); transient drops reconnect on their own.
+  Awaiting it inline blocks the caller for the worker's whole life.
+- Unlicensed servers cap subscriptions per database, and concurrent workers on one subscription need a license: read
+  `MaxNumberOfSubscriptionsPerDatabase` and `HasConcurrentDataSubscriptions` from `GET /license/status` first
+  (`../version-gate.md`).
 
-`GetDatabaseRecordOperation(name)` returns `null` when the db does not exist. Operations against a missing db throw `DatabaseDoesNotExistException`.
+### Patching
 
-## Data subscriptions
+- `PatchByQueryOperation` runs in the background on the server. `store.Operations.Send(...)` returns an `Operation`:
+  call `WaitForCompletion()` before reading what it changed (in tests too), which also surfaces script errors.
+- Pass values into the `update { ... }` script as query parameters (`IndexQuery.QueryParameters`), never by string
+  concatenation.
 
-Server-side query defines a stream; a worker pulls acknowledged batches with at-least-once delivery and automatic resume from the last acknowledged position. A single worker per subscription needs no license; **concurrent** workers on one subscription are license-gated (`HasConcurrentDataSubscriptions` — verify via `GET /license/status`).
+### Document extensions
 
-A subscription worker connects over the server's **TCP** port, not HTTP: the client reads `GET /info/tcp` and dials the address the server advertises there, so a server whose TCP port is published on a different host port than it binds sends the worker to the wrong place — the fix is in `../install.md`. Unlicensed servers cap subscriptions per database — read `MaxNumberOfSubscriptionsPerDatabase` from `GET /license/status`.
+- `session.Advanced.Attachments.Get(...)` returns an `AttachmentResult` that holds the open stream: dispose it.
+- `session.Advanced.Revisions.GetFor<T>(id)` returns at most 25 revisions unless you pass `start` and `pageSize`. Nothing
+  says the list was cut.
+- Revision retention is license-capped: a configuration above `MaxNumberOfRevisionsToKeep` or
+  `MaxNumberOfRevisionAgeToKeepInDays` is refused with HTTP 402 and
+  `Raven.Client.Exceptions.Commercial.LicenseLimitException`. A database-wide `Default` configuration is refused outright
+  on an unlicensed server whatever the numbers: configure per collection. Read both caps and
+  `CanSetupDefaultRevisionsConfiguration` from `GET /license/status` first (`../version-gate.md`).
 
-```csharp
-using Raven.Client.Documents.Subscriptions;
+### Concurrency
 
-string name = store.Subscriptions.Create<Order>(x => x.Total > 1000);
-// or full control: store.Subscriptions.Create(new SubscriptionCreationOptions { Name = "big-orders", Query = "from Orders where Total > 1000" });
+- **(client 7.2.2+)** `session.Advanced.UseOptimisticConcurrency` is `[Obsolete]`: it still compiles, but fails the
+  build under `TreatWarningsAsErrors` (`CS0618`). Use `session.Advanced.OptimisticConcurrencyMode =
+  OptimisticConcurrencyMode.Writes` (or `WritesAndReads`; default `None`) instead, and never set both on one session:
+  that throws. On an older client only the boolean exists, so read the package version first (`../version-gate.md`).
 
-using var worker = store.Subscriptions.GetSubscriptionWorker<Order>(name);
-await worker.Run(batch =>
-{
-    foreach (SubscriptionBatch<Order>.Item item in batch.Items)
-    {
-        Order order = item.Result;   // item.Id, item.ChangeVector also available
-        Process(order);
-    }
-    // ack is automatic when the delegate returns; open batch.OpenSession() to write in the same unit
-});
-```
+### Facets and advanced queries
 
-- `Create<T>(Expression<Func<T,bool>> predicate, ...)`, `Create<T>(SubscriptionCreationOptions<T>)`, or `Create(SubscriptionCreationOptions)` (string `Query`). Returns the subscription name.
-- **A named subscription is create-once, not upsert.** `Create` with a `Name` that already exists is rejected by the server (the name is "already in use in a subscription with different Id"), so startup code that reruns must check `GetSubscriptions` first and create only when missing. An unnamed `Create` sidesteps this by letting the server generate the name, at the cost of not being able to find it again.
-- `GetSubscriptionWorker<T>(name)` or `GetSubscriptionWorker<T>(SubscriptionWorkerOptions)`. `worker.Run(Action<SubscriptionBatch<T>>)` or `Run(Func<SubscriptionBatch<T>, Task>)`; both return a `Task` that completes only on a terminal error.
-- `batch.OpenSession()` gives a session already scoped to the batch — writes there commit together with the ack.
-- Reconnection: the worker reconnects automatically on transient drops (`SubscriptionWorkerOptions.TimeToWaitBeforeConnectionRetry`). The returned `Task` faults on terminal conditions — `SubscriptionClosedException`, `SubscriptionInvalidStateException`, `SubscriptionDoesNotExistException`; loop-and-recreate only for those. Only one worker processes a subscription at a time unless `SubscriptionWorkerOptions.Strategy` allows concurrency.
+- A facet query written as raw RQL runs through `session.Advanced.RawQuery<T>(rql).ExecuteAggregation()`. The ordinary
+  result path fails: the server answers "Raw query with aggregation by facet should be called by executeAggregation
+  method". The builder form, `query.AggregateBy(...)` or `.AggregateUsing(facetSetupId)`, ends in `Execute()` or
+  `ExecuteAsync()`.
 
-## Patching (server-side, no load)
+## Docs
 
-```csharp
-session.Advanced.Patch<Order, string>("orders/1-A", x => x.Status, "shipped");
-session.Advanced.Increment<Order, int>("orders/1-A", x => x.Version, 1);
-session.SaveChanges();   // patches batch with the rest of the unit of work
-```
-
-- Signatures: `Patch<T,U>(string id | T entity, Expression<Func<T,U>> path, U value)`; array form `Patch<T,U>(id, Expression<Func<T,IEnumerable<U>>> path, Expression<Func<JavaScriptArray<U>,object>> arrayAdder)`. `Increment<T,U>(string id | T entity, Expression<Func<T,U>> path, U valToAdd)`. Also `AddOrPatch<T,TU>(id, entity, path, value)` / `AddOrIncrement<T,TU>(id, entity, path, valToAdd)` for upsert semantics.
-- Bulk conditional update across a collection — run a JS patch script server-side (no documents travel to the client):
-
-```csharp
-using Raven.Client.Documents.Operations;
-
-var op = store.Operations.Send(new PatchByQueryOperation(
-    "from Orders as o where o.Status = 'pending' update { o.Status = 'stale'; }"));
-op.WaitForCompletion();   // PatchByQueryOperation returns an Operation; await/WaitForCompletion for the result
-```
-
-`PatchByQueryOperation(string queryToUpdate)` or `PatchByQueryOperation(IndexQuery, QueryOperationOptions)`. The `update { ... }` clause is JavaScript; parameterize via `IndexQuery.QueryParameters` rather than string-concatenating values.
-
-## Attachments, counters, time series, revisions
-
-All accessed off `session.Advanced` (or directly on the session for counters/time series); changes flush on `SaveChanges()`.
-
-```csharp
-// Attachments — binary streams attached to a document
-session.Advanced.Attachments.Store("orders/1-A", "invoice.pdf", stream, "application/pdf");
-AttachmentResult a = session.Advanced.Attachments.Get("orders/1-A", "invoice.pdf");   // a.Stream, a.Details
-bool has = session.Advanced.Attachments.Exists("orders/1-A", "invoice.pdf");
-
-// Counters — distributed, conflict-free numeric values
-session.CountersFor("orders/1-A").Increment("views", 1);
-long? views = session.CountersFor("orders/1-A").Get("views");
-Dictionary<string, long?> all = session.CountersFor("orders/1-A").GetAll();
-
-// Time series — timestamped numeric measurements per named series
-session.TimeSeriesFor("orders/1-A", "Heartrate").Append(DateTime.UtcNow, 72, tag: "watch/1");
-TimeSeriesEntry[] entries = session.TimeSeriesFor("orders/1-A", "Heartrate").Get(from: DateTime.UtcNow.AddHours(-1), to: DateTime.UtcNow);
-
-// Revisions — read-only history (requires revisions configured for the collection)
-List<Order> history = session.Advanced.Revisions.GetFor<Order>("orders/1-A", start: 0, pageSize: 25);
-Order at = session.Advanced.Revisions.Get<Order>("orders/1-A", DateTime.UtcNow.AddDays(-1));
-List<IMetadataDictionary> meta = session.Advanced.Revisions.GetMetadataFor("orders/1-A");
-```
-
-- Attachments: `Store(documentId|entity, name, Stream, contentType = null)`; `Get(...)` returns `AttachmentResult` (dispose it — it holds the stream); `GetRange`, `GetRevision`, `Exists` also available.
-- Counters `Increment(counter, delta = 1)` / `Delete(counter)`; deltas merge across nodes.
-- Time series `Append(DateTime, double | IEnumerable<double>, tag = null)`, `Delete(from, to)` / `Delete(at)`; `Get(from, to, start, pageSize)` returns `TimeSeriesEntry[]`. Typed variants via `TimeSeriesFor<T>`.
-- Revision retention is license-capped: a configuration above `MaxNumberOfRevisionsToKeep` / `MaxNumberOfRevisionAgeToKeepInDays` is refused with HTTP 402 and `Raven.Client.Exceptions.Commercial.LicenseLimitException` — read both from `GET /license/status` before choosing numbers. A database-wide `Default` configuration is refused outright on an unlicensed server whatever the numbers (`CanSetupDefaultRevisionsConfiguration` is `false` there); configure per collection instead.
-- Revisions `GetFor<T>` defaults to `pageSize: 25`; `Get<T>(changeVector)` or `Get<T>(id, DateTime)` fetch one point-in-time version.
-
-## Cluster-wide transactions & concurrency
-
-```csharp
-using Raven.Client.Documents.Session;
-using Raven.Client.Documents.Operations.CompareExchange;
-
-using var session = store.OpenSession(new SessionOptions { TransactionMode = TransactionMode.ClusterWide });
-
-// atomic reservation — succeeds only if the key does not already exist cluster-wide
-CompareExchangeValue<string> reserved =
-    session.Advanced.ClusterTransaction.CreateCompareExchangeValue("emails/jane@acme.com", "users/1-A");
-
-session.Store(new User { Email = "jane@acme.com" }, "users/1-A");
-session.SaveChanges();   // throws ClusterTransactionConcurrencyException if the key was taken
-```
-
-- `TransactionMode.ClusterWide` routes the batch through Raft consensus — all-or-nothing across nodes, at the cost of latency. `TransactionMode.SingleNode` is the default.
-- Compare-exchange (the cluster's concurrency primitive): `CreateCompareExchangeValue<T>(key, value)`, `GetCompareExchangeValueAsync<T>(key)`, `DeleteCompareExchangeValue(key, long index)` / `DeleteCompareExchangeValue<T>(CompareExchangeValue<T>)`. `CompareExchangeValue<T>` exposes `Key`, `Value`, and `Index` (the version — 0 means "must not exist yet").
-- **Optimistic concurrency** (single-node mode) makes `SaveChanges()` fail on a stale change vector — `ConcurrencyException`. Which API you get depends on the **client package version**, so read it off the manifest first:
-  - `session.Advanced.OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes` — the current API, **(client 7.2.2+)**. Also `WritesAndReads` (tracks loaded entities too); default `None`.
-  - `session.Advanced.UseOptimisticConcurrency = true` — use only on a client older than 7.2.2. From 7.2.2 it still compiles but is `[Obsolete]` and fails the build under `TreatWarningsAsErrors` (`CS0618`), and setting both on one session throws.
-
-  Neither combines with `ClusterWide` (compare-exchange is the cluster-wide equivalent).
-
-## Advanced queries — call form only
-
-RQL semantics and full syntax live in the shared files; from C# these are LINQ extensions on `IQueryable<T>` / `IDocumentQuery<T>`:
-
-| Feature | Call form | RQL |
-|---|---|---|
-| Facets / aggregation | `query.AggregateBy(builder)` or `.AggregateUsing(facetSetupId)` → `.Execute()` returns `Dictionary<string, FacetResult>` | `../rql-facets.md` |
-| Suggestions | `query.SuggestUsing(builder)` → `ISuggestionQuery<T>` | `../rql-advanced.md` |
-| More-like-this | `query.MoreLikeThis(builder)` → `IRavenQueryable<T>` | `../rql-advanced.md` |
-| Spatial | `query.Spatial(x => x.Location, c => c.WithinRadius(km, lat, lng))` | `../rql-spatial.md` |
-
-`AggregateBy` chains `AndAggregateBy(...)` for multiple facets; both facet paths terminate in `Execute()`/`ExecuteAsync()`. Do not hand-write RQL for these when the strongly-typed builder covers the case.
+| You need | `../client-docs.md` topic |
+|---|---|
+| Which executor runs an operation | Operations: `maintenance`, `maintenance.server`, `operations` |
+| Creating, deleting, listing databases; `GetDatabaseRecordOperation` | Creating a database, Deleting a database, Listing databases |
+| Subscriptions: create, consume, worker options, `batch.OpenSession()`, list, update, delete | Creating a data subscription, Consuming a data subscription, Subscription worker options, Subscription maintenance |
+| Live change notifications | Changes API, Document change notifications |
+| `Patch`, `Increment`, `AddOrPatch`, `PatchOperation`, patch by query | Patching one document, Patch by query |
+| Attachments | Storing attachments, Loading attachments |
+| Counters | Counters, Reading counters |
+| Time series | Appending time series entries, Reading time series entries |
+| Revisions | Configuring revisions, Loading revisions, Reverting to revisions |
+| Cluster-wide sessions, compare exchange | Cluster-wide transactions, Compare exchange, Creating compare-exchange items |
+| Optimistic concurrency, how it behaves in a cluster-wide session | Optimistic concurrency |
+| Facets, suggestions, more like this, spatial from code | Facets, Suggestions, More like this, Spatial queries; the RQL side is in `../rql-docs.md` |

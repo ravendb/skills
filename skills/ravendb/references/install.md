@@ -172,6 +172,6 @@ The URL and database the user confirmed — `http://localhost:8080` and `MyApp` 
 - `RAVEN_DATABASE` does **not** work on a secured server: the image's entrypoint fails (`./cert-utils.sh: No such file or directory`) and the container exits 1. Create the database with `PUT /admin/databases` presenting your client certificate.
 - `rvn` cannot generate certificates; it only consumes them (`put-client-certificate`, `create-setup-package -m own-certificate`). Generate them with `openssl`, and note `put-client-certificate` accepts no password, so a pfx handed to it must be password-less.
 
-The wizard remains the route for a public-facing server: start with only `RAVEN_License_Eula_Accepted=true`, open the server URL, and follow it. It issues a Let's Encrypt certificate (RavenDB provides a free `*.development.run` domain) or takes your own, and hands back a client-certificate bundle. **That path needs a license key before it can complete.** Details: <https://ravendb.net/docs> → Start / Installation.
+The wizard remains the route for a public-facing server: start with only `RAVEN_License_Eula_Accepted=true`, open the server URL, and follow it. It issues a Let's Encrypt certificate (RavenDB provides a free `*.development.run` domain) or takes your own, and hands back a client-certificate bundle. **That path needs a license key before it can complete.** Details: `https://docs.ravendb.net/<version>/start/installation/setup-wizard/overview`.
 
 Client-side wiring for either: the "Secured server" section of your language's `client.md`.
