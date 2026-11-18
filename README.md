@@ -28,7 +28,7 @@ Per-agent paths: `~/.claude/skills/` (Claude Code), `~/.cursor/skills/` or `.age
 
 Each skill is a router, not a manual. `SKILL.md` holds only the front-matter description plus tables that route a task to the ONE reference file it needs; everything else stays out of context until something asks for it. An agent working in C# never loads the JavaScript files.
 
-Content is verified against the RavenDB client repos and running servers, never written from recall: the rule the skills impose on their readers. Version- and license-gated features carry an inline `(7.0+)` / `(license)` mark in the file that documents them.
+Content is verified against the RavenDB client repos and running servers, never written from recall: the rule the skills impose on their readers. Version- and license-gated features carry an inline `(7.2.2+)` / `(license)` mark in the file that documents them.
 
 ## Contributing
 

@@ -39,7 +39,7 @@ references/
                             testing.md · ai-agents.md
 ```
 
-Version- and license-gated features carry an inline `(7.0+)` / `(license)` mark in the file that documents them, and the router requires three checks before using one: server version (`GET /build/version`), the client version pinned in the project, and `GET /license/status`.
+Version- and license-gated features carry an inline `(7.2.2+)` / `(license)` mark in the file that documents them, and the router requires three checks before using one: server version (`GET /build/version`), the client version pinned in the project, and `GET /license/status`.
 
 ## Maintaining it
 

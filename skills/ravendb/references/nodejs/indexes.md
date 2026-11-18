@@ -1,16 +1,15 @@
 # RavenDB indexes from Node.js: traps
 
-This file holds the traps. Defining, deploying, map-reduce, related documents, analyzers, vector fields and the staleness API are in the docs via `../client-docs.md`: read the `.nodejs.md` copy for the server's version. A feature this file does not show still exists: check the docs page for your server version before saying it does not.
+Index traps for the Node.js client. Defining, deploying and querying indexes: `../client-docs.md`.
 
 ## Traps
 
-- **Query a static index by its `/` name.** The index name is the class name with `_` turned into `/`: class `Deals_ByClientName` deploys as `Deals/ByClientName`. Use `session.query({ indexName: "Deals/ByClientName" })` or pass the class, `session.query({ index: Deals_ByClientName })`; the `_` spelling names an index that does not exist.
+- **Query a static index by its `/` name**: class `Deals_ByClientName` deploys as `Deals/ByClientName`, and the `_` spelling names no index. Use `session.query({ indexName: "Deals/ByClientName" })` or `session.query({ index: Deals_ByClientName })`.
 - **The map function is stringified and shipped to the server**, so it must be self-contained: no closure captures.
-- **Reading a computed field takes two things: store it, and project it.** A field the map computes does not exist on the source document, so `this.store("total", "Yes")` plus an explicit `.selectFields([...])` is what makes the server answer from the index; without the store the projection is `null` on every row, silently. Filtering and sorting on the computed field work either way, which is why this reads as a client bug rather than a missing store. Map-reduce indexes are exempt: reduce results always come from the index, stored or not.
-- **A stored numeric field comes back from the index as a string** (`"650"`, not `650`): the store keeps the indexed term, not the JSON type. It prints identically, so the bug surfaces later as `"650" + 10 === "65010"`; wrap it in `Number(...)` before any arithmetic or comparison. Map-reduce results keep their numeric type.
-- **`=` and `search()` disagree on analyzed fields.** Only fields emitted by the map are queryable. `search()` on a field needs `this.index(field, "Search")` on it, and equality on a Search field matches analyzed terms, not the exact string. RQL side: `../rql-cheatsheet.md`, `../rql-fulltext.md`.
-- **Vector fields need the Corax search engine**; Lucene does not support them. The SDK sets `searchEngineType = "Corax"` itself when the index has a vector field.
-- **A query right after `saveChanges()` can return pre-write results.** Indexes update asynchronously and the response is marked stale, not delayed. Tests and seed scripts that write and then query must wait: `.waitForNonStaleResults()` on the query, or the polling helper in `testing.md`. Never wait on hot production paths: it trades latency for consistency, so design UIs to tolerate slightly stale results instead.
+- **A computed field reads back only when stored and projected.** Projecting it with `.selectFields([...])` returns `null` on every row, silently, until the index has `this.store("total", "Yes")`, though filtering and sorting on it work. Map-reduce indexes are exempt.
+- **A stored numeric field reads back as a string** (`"650"`), so `"650" + 10 === "65010"`: wrap it in `Number(...)`. Map-reduce results keep their numeric type.
+- **`search()` needs the field indexed as `this.index(field, "Search")`**, and only fields the map emits are queryable. What `=` and `search()` then match: `../rql-cheatsheet.md`.
+- **Vector fields need the Corax search engine** (Lucene lacks them); the SDK sets `searchEngineType = "Corax"` itself for an index with a vector field.
 
 ## Map-reduce in JavaScript syntax
 

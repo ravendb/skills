@@ -1,29 +1,21 @@
 # RQL docs by server version
 
 Where RQL syntax lives: the skill keeps the traps (`rql-cheatsheet.md`, `rql-fulltext.md`, `rql-timeseries.md`), and
-the docs page below holds the syntax, options and examples. A feature missing from those files still exists if it has
-a page here.
+the docs page below holds the syntax, options and examples.
 
-Replace `<version>` with the server's major.minor, the `ProductVersion` from `GET /build/version`, and read the page as
-Markdown, as "Official docs" in `SKILL.md` describes: `.md` for C#, `.<lang>.md` for another client language. The
-header of the `.md` lists the languages the page has; if yours is not there, the RQL on the page still holds, and the
-client calls come from your language's files here.
+Replace `<version>` with the server's major.minor and read each page as "Official docs" in `SKILL.md` describes.
 
 ## Core RQL
 
 | Topic | URL |
 |---|---|
 | What RQL is: `from` `where` `group by` `select` `include` `load`, operators, functions | `https://docs.ravendb.net/<version>/querying/rql/what-is-rql` |
-| How to query | `https://docs.ravendb.net/<version>/querying/overview` |
 | Filtering: `where`, nested fields, `in`, `all in`, prefixes | `https://docs.ravendb.net/<version>/querying/filtering-query-results/filter-query-results` |
 | Sorting: `order by`, casts, `score()`, `random()`, distance | `https://docs.ravendb.net/<version>/querying/sorting-query-results/sort-query-results` |
 | Dates: `now()`, `today()`, offsets | `https://docs.ravendb.net/<version>/querying/filtering-query-results/filter-by-date-and-time` |
 | Projections: `select`, JS projections, `load` | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-project-query-results` |
 | `group by` | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-perform-group-by-query` |
 | Paging: `limit`, `offset` | `https://docs.ravendb.net/<version>/indexes/querying/paging` |
-| Querying a named static index: `from index` | `https://docs.ravendb.net/<version>/indexes/querying/query-index` |
-| Auto-indexes vs static indexes: what a dynamic query creates | `https://docs.ravendb.net/<version>/indexes/creating-and-deploying` |
-| Stale indexes: `IsStale`, waiting for non-stale results | `https://docs.ravendb.net/<version>/indexes/stale-indexes` |
 | Field presence: `exists()` | `https://docs.ravendb.net/<version>/querying/filtering-query-results/filter-by-field-presence` |
 | `intersect()` | `https://docs.ravendb.net/<version>/indexes/querying/intersection` |
 | `cmpxchg()` in queries | `https://docs.ravendb.net/<version>/compare-exchange/cmpxchg-in-dynamic-queries` |
@@ -46,7 +38,6 @@ client calls come from your language's files here.
 | Fuzzy: `fuzzy()`, Lucene indexes only | `https://docs.ravendb.net/<version>/client-api/session/querying/text-search/fuzzy-search` |
 | Proximity: `proximity()`, Lucene indexes only | `https://docs.ravendb.net/<version>/client-api/session/querying/text-search/proximity-search` |
 | Lucene syntax: `lucene()` | `https://docs.ravendb.net/<version>/querying/filtering-query-results/filter-with-lucene-syntax` |
-| Analyzers: what `search()` and `=` match against | `https://docs.ravendb.net/<version>/indexes/using-analyzers` |
 | Search engine: Corax vs Lucene, what Corax does not support | `https://docs.ravendb.net/<version>/indexes/search-engine/corax` |
 | Highlighting on a dynamic query | `https://docs.ravendb.net/<version>/client-api/session/querying/text-search/highlight-query-results` |
 
@@ -70,6 +61,5 @@ client calls come from your language's files here.
 | More like this: index setup, options | `https://docs.ravendb.net/<version>/indexes/querying/morelikethis` |
 | Highlighting | `https://docs.ravendb.net/<version>/indexes/querying/highlighting` |
 | Vector search | `https://docs.ravendb.net/<version>/ai-integration/vector-search/vector-search-using-dynamic-query` |
-| Vector search on a static index | `https://docs.ravendb.net/<version>/ai-integration/vector-search/vector-search-using-static-index` |
 
 Everything else for that version starts at `https://docs.ravendb.net/<version>` (no trailing slash).

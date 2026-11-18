@@ -1,73 +1,45 @@
 # RavenDB .NET client: operations and their traps
 
-This file holds the safety rule and the traps for work beyond CRUD: databases, subscriptions, patching, attachments,
-counters, time series, revisions, cluster-wide transactions and concurrency, and facet calls. Every API here is in the
-docs: find the page in `../client-docs.md` and read its C# copy (`<path>.md`) for the server's version. An operation
-this file does not show still exists: check the docs page for your server version before saying it does not.
-
-**Most of these are writes.** Creating or deleting a database, creating or deleting a subscription, patching one
-document or by query, a revisions configuration, and putting or deleting a compare-exchange value all change state that
-outlives your task. Under the production rule in `SKILL.md`, name the operation and the database it lands on and get the
-user's agreement first. Deleting a database with `hardDelete` removes its files for good.
+Operation traps for the .NET client. The APIs: `../client-docs.md`.
 
 ## Traps
 
 ### Dispatch
 
-- Server-level operations (create, delete or list databases) go through `store.Maintenance.Server.Send(...)`.
-  `store.Maintenance.Send(...)` runs database-level operations against `store.Database`, and `store.Operations.Send(...)`
-  runs data operations such as patches.
+- Create, delete and list databases through `store.Maintenance.Server.Send(...)`; `store.Maintenance.Send(...)` runs
+  database-level operations against `store.Database`, `store.Operations.Send(...)` runs data operations such as patches.
 
 ### Subscriptions
 
-- **A named subscription is create-once, not upsert.** `Create` with a `Name` that already exists is rejected ("already
-  in use in a subscription with different Id"), and the error does not say to look first. Startup code that reruns must
-  check `GetSubscriptions` and create only when missing. An unnamed `Create` lets the server generate the name, at the
-  cost of not finding it again.
-- The worker connects over the server's **TCP** port, not HTTP: the client reads `GET /info/tcp` and dials the address
-  the server advertises there. A server whose TCP port is published on a different host port than it binds (a Docker
-  remap) sends the worker to the wrong place, and the error names a missing database rather than a wrong port.
-  `../install.md` has the fix.
-- Delivery is at least once: a crash before the batch is acknowledged replays it on the next worker. Make the
-  processing idempotent.
+- **A named subscription is create-once, not upsert.** `Create` with a taken `Name` fails with "already in use in a
+  subscription with different Id". Check `GetSubscriptions` first. An unnamed `Create` gets a generated name you cannot
+  find again.
+- The worker dials the **TCP** port that `GET /info/tcp` advertises, not HTTP. Behind a Docker remap of that port it
+  dials the wrong place, and the error names a missing database, not a port: `../install.md` has the fix.
 - `worker.Run(...)` returns a `Task` that completes only on a terminal error (`SubscriptionClosedException`,
   `SubscriptionInvalidStateException`, `SubscriptionDoesNotExistException`); transient drops reconnect on their own.
   Awaiting it inline blocks the caller for the worker's whole life.
-- Unlicensed servers cap subscriptions per database, and concurrent workers on one subscription need a license: read
-  `MaxNumberOfSubscriptionsPerDatabase` and `HasConcurrentDataSubscriptions` from `GET /license/status` first
-  (`../version-gate.md`).
 
 ### Patching
 
-- `PatchByQueryOperation` runs in the background on the server. `store.Operations.Send(...)` returns an `Operation`:
-  call `WaitForCompletion()` before reading what it changed (in tests too), which also surfaces script errors.
-- Pass values into the `update { ... }` script as query parameters (`IndexQuery.QueryParameters`), never by string
-  concatenation.
+- `PatchByQueryOperation` runs in the background: call `WaitForCompletion()` on the `Operation` that
+  `store.Operations.Send(...)` returns before reading results (tests too); it also surfaces script errors.
 
 ### Document extensions
 
-- `session.Advanced.Attachments.Get(...)` returns an `AttachmentResult` that holds the open stream: dispose it.
-- `session.Advanced.Revisions.GetFor<T>(id)` returns at most 25 revisions unless you pass `start` and `pageSize`. Nothing
-  says the list was cut.
-- Revision retention is license-capped: a configuration above `MaxNumberOfRevisionsToKeep` or
-  `MaxNumberOfRevisionAgeToKeepInDays` is refused with HTTP 402 and
-  `Raven.Client.Exceptions.Commercial.LicenseLimitException`. A database-wide `Default` configuration is refused outright
-  on an unlicensed server whatever the numbers: configure per collection. Read both caps and
-  `CanSetupDefaultRevisionsConfiguration` from `GET /license/status` first (`../version-gate.md`).
+- `session.Advanced.Attachments.Get(...)` returns an `AttachmentResult` holding the open stream: dispose it.
+- `session.Advanced.Revisions.GetFor<T>(id)` returns at most 25 revisions unless you pass `start` and `pageSize`, and
+  nothing says the list was cut.
+- Over the revision caps (`../version-gate.md`) the server answers HTTP 402 and the client throws
+  `Raven.Client.Exceptions.Commercial.LicenseLimitException`. Unlicensed, a database-wide `Default` configuration is
+  refused at any numbers: configure per collection.
 
 ### Concurrency
 
-- **(client 7.2.2+)** `session.Advanced.UseOptimisticConcurrency` is `[Obsolete]`: it still compiles, but fails the
-  build under `TreatWarningsAsErrors` (`CS0618`). Use `session.Advanced.OptimisticConcurrencyMode =
-  OptimisticConcurrencyMode.Writes` (or `WritesAndReads`; default `None`) instead, and never set both on one session:
-  that throws. On an older client only the boolean exists, so read the package version first (`../version-gate.md`).
-
-### Facets and advanced queries
-
-- A facet query written as raw RQL runs through `session.Advanced.RawQuery<T>(rql).ExecuteAggregation()`. The ordinary
-  result path fails: the server answers "Raw query with aggregation by facet should be called by executeAggregation
-  method". The builder form, `query.AggregateBy(...)` or `.AggregateUsing(facetSetupId)`, ends in `Execute()` or
-  `ExecuteAsync()`.
+- **(client 7.2.2+)** `session.Advanced.UseOptimisticConcurrency` is `[Obsolete]` and fails a `TreatWarningsAsErrors`
+  build (`CS0618`): set `session.Advanced.OptimisticConcurrencyMode = OptimisticConcurrencyMode.Writes` (or
+  `WritesAndReads`; default `None`), never both on one session (that throws). Older clients have only the boolean
+  (`../version-gate.md`).
 
 ## Docs
 
@@ -84,4 +56,4 @@ user's agreement first. Deleting a database with `hardDelete` removes its files 
 | Revisions | Configuring revisions, Loading revisions, Reverting to revisions |
 | Cluster-wide sessions, compare exchange | Cluster-wide transactions, Compare exchange, Creating compare-exchange items |
 | Optimistic concurrency, how it behaves in a cluster-wide session | Optimistic concurrency |
-| Facets, suggestions, more like this, spatial from code | Facets, Suggestions, More like this, Spatial queries; the RQL side is in `../rql-docs.md` |
+| Facets, suggestions, more like this, spatial from code | `../rql-docs.md` (Facets; Suggestions; More like this; Spatial on a dynamic query) |

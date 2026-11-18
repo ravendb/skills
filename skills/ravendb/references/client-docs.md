@@ -1,10 +1,7 @@
 # Client API docs by topic
 
-Routes for the client calls that the language files leave to the docs, for every client language. Replace `<version>`
-with the server's major.minor (`ProductVersion` from `GET /build/version`) and read the page as Markdown, as "Official
-docs" in `SKILL.md` describes: `.md` for C#, `.<lang>.md` for `nodejs`, `python`, `java` or `php`. The header of the
-`.md` lists the languages the page has; if yours is not there, read the C# copy for the concepts and take the names of
-the calls from your language's files here, or from the client's source when the skill has no files for your language.
+Docs pages by topic for everything outside RQL: client calls, install and setup, testing, diagnostics and AI agents.
+Replace `<version>` with the server's major.minor and read each page as "Official docs" in `SKILL.md` describes.
 
 ## Store and session
 
@@ -32,22 +29,15 @@ the calls from your language's files here, or from the client's source when the 
 | Topic | URL |
 |---|---|
 | Query overview, raw RQL queries | `https://docs.ravendb.net/<version>/querying/overview` |
-| Filtering | `https://docs.ravendb.net/<version>/querying/filtering-query-results/filter-query-results` |
 | Logical operators | `https://docs.ravendb.net/<version>/querying/filtering-query-results/use-logical-operators` |
 | Document query API | `https://docs.ravendb.net/<version>/querying/document-query/what-is-document-query` |
 | Customizing a query: wait for non-stale results, no caching | `https://docs.ravendb.net/<version>/querying/customize-query` |
 | Querying a static index | `https://docs.ravendb.net/<version>/indexes/querying/query-index` |
 | Query statistics: total results, staleness | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-get-query-statistics` |
 | Counting results | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-count-query-results` |
-| Projections | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-project-query-results` |
 | Distinct | `https://docs.ravendb.net/<version>/indexes/querying/distinct` |
-| Paging | `https://docs.ravendb.net/<version>/indexes/querying/paging` |
 | Lazy queries | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-perform-queries-lazily` |
 | Streaming results | `https://docs.ravendb.net/<version>/querying/stream-query-results` |
-| Facets | `https://docs.ravendb.net/<version>/indexes/querying/faceted-search` |
-| Suggestions | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-work-with-suggestions` |
-| More like this | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-use-morelikethis` |
-| Spatial queries | `https://docs.ravendb.net/<version>/client-api/session/querying/how-to-make-a-spatial-query` |
 
 ## Indexes
 
@@ -96,3 +86,40 @@ the calls from your language's files here, or from the client's source when the 
 | Cluster-wide transactions | `https://docs.ravendb.net/<version>/client-api/session/cluster-transaction/overview` |
 | Compare exchange | `https://docs.ravendb.net/<version>/compare-exchange/overview` |
 | Creating compare-exchange items | `https://docs.ravendb.net/<version>/compare-exchange/create-cmpxchg-items` |
+
+## Install and setup
+
+| Topic | URL |
+|---|---|
+| Docker image | `https://docs.ravendb.net/<version>/start/containers/image-usage` |
+| Setup wizard | `https://docs.ravendb.net/<version>/start/installation/setup-wizard/overview` |
+| Manual certificate configuration | `https://docs.ravendb.net/<version>/server/security/authentication/certificate-configuration` |
+| Running as a service | `https://docs.ravendb.net/<version>/start/installation/running-as-service` |
+| Ubuntu DEB package | `https://docs.ravendb.net/<version>/start/installation/gnu-linux/deb` |
+| Activating a license | `https://docs.ravendb.net/<version>/licensing/activate-license` |
+
+## Testing
+
+| Topic | URL |
+|---|---|
+| Embedded server | `https://docs.ravendb.net/<version>/server/embedded` |
+| Pausing indexing | `https://docs.ravendb.net/<version>/client-api/operations/maintenance/indexes/stop-indexing` |
+
+## Diagnostics and raw HTTP
+
+| Topic | URL |
+|---|---|
+| HTTP endpoints | `https://docs.ravendb.net/<version>/monitoring/debug/debug-endpoints` |
+| Logging configuration | `https://docs.ravendb.net/<version>/monitoring/logging/configuration` |
+| REST API: batch commands | `https://docs.ravendb.net/<version>/client-api/rest-api/document-commands/batch-commands` |
+| REST API: cURL and HTTPS | `https://docs.ravendb.net/<version>/client-api/rest-api/rest-api-intro` |
+
+## AI agents
+
+| Topic | URL |
+|---|---|
+| Creating AI agents: API | `https://docs.ravendb.net/<version>/ai-integration/ai-agents/creating-ai-agents/creating-ai-agents_api` |
+| Multi-agents | `https://docs.ravendb.net/<version>/ai-integration/ai-agents/multi-agents` |
+| Reading conversation history | `https://docs.ravendb.net/<version>/ai-integration/ai-agents/reading-conversation-history` |
+| AI connection strings | `https://docs.ravendb.net/<version>/ai-integration/connection-strings/overview` |
+| Embeddings generation task | `https://docs.ravendb.net/<version>/ai-integration/generating-embeddings/embeddings-generation-task` |
