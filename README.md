@@ -28,8 +28,8 @@ Per-agent paths: `~/.claude/skills/` (Claude Code), `~/.cursor/skills/` or `.age
 
 Each skill is a router, not a manual. `SKILL.md` holds only the front-matter description plus tables that route a task to the ONE reference file it needs; everything else stays out of context until something asks for it. An agent working in C# never loads the JavaScript files.
 
-Content is verified against the RavenDB client repos and running servers, never written from recall — the rule the skills impose on their readers. Server baseline is **6.2+**; version- and license-gated features carry an inline `(7.0+)` / `(license)` mark in the file that documents them.
+Content is verified against the RavenDB client repos and running servers, never written from recall: the rule the skills impose on their readers. Version- and license-gated features carry an inline `(7.2.2+)` / `(license)` mark in the file that documents them.
 
 ## Contributing
 
-Fix the file that owns the fact: a client API change goes in `skills/ravendb/references/<language>/`, an RQL change in the matching `rql-*.md`. A new topic file also needs a row in the router table in `SKILL.md`, or no agent will ever find it.
+The skill keeps workflow and safety rules, traps, a minimal start per client language, and routing; API reference stays in the docs. Fix the file that owns the fact: a client trap goes in `skills/ravendb/references/<language>/`, an RQL trap in `rql-cheatsheet.md` or the matching `rql-*.md`, and a docs route in `rql-docs.md` or `client-docs.md`. A new topic file also needs a row in the router table in `SKILL.md`, or no agent will ever find it.
